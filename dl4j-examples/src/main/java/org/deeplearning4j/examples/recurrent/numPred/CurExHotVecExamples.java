@@ -3,7 +3,6 @@ package org.deeplearning4j.examples.recurrent.numPred;
 import org.datavec.api.records.reader.RecordReader;
 import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
 import org.datavec.api.split.FileSplit;
-import org.datavec.api.writable.Writable;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
@@ -23,21 +22,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.deeplearning4j.examples.recurrent.basic.BasicRNNExample.LEARNSTRING_CHARS_LIST;
-
 /**
  * Created by YoungH on 10/19/16.
  * This example trains a RNN. We take the history data of current exchange rate from CNY to One U.S. dollar as input,
  * , it will predict the rate of next time.
  */
-public class CurExExamples {
+public class CurExHotVecExamples {
 
     private static int HIDDEN_LAYER_WIDTH=6;
     private static int HIDDEN_LAYER_CONT=3;
     private static INDArray input;
     private static INDArray labels;
-    private static List<Double> trainList = new ArrayList<Double>();
-    private static List<Double> testList = new ArrayList<Double>();
+    private static List<Integer> trainList = new ArrayList<Integer>();
+    private static List<Integer> testList = new ArrayList<Integer>();
     private static DataSet trainingData;
 
 
@@ -53,8 +50,20 @@ public class CurExExamples {
         net.rnnClearPreviousState();
 
         // put the first caracter into the rrn as an initialisation
-        INDArray testInit = Nd4j.zeros(1);
-        testInit.putScalar(0,testList.get(0));
+        INDArray testInit = Nd4j.zeros(5,10);
+        int num = testList.get(0);
+        int lastIndex = testList.size()-1;
+        int d0 = num / 10000;
+        int d1 = (num - d0 * 10000) / 1000;
+        int d2 = (num - d0 * 10000 - d1 * 1000) / 100;
+        int d3 = (num - d0 * 10000 - d1 * 1000 - d2 * 100) / 10;
+        int d4 = (num - d0 * 10000 - d1 * 1000 - d2 * 100 - d3 * 10);
+        testInit.putScalar(new int[] {0, d0},1);
+        testInit.putScalar(new int[] {1, d1},1);
+        testInit.putScalar(new int[] {2, d2},1);
+        testInit.putScalar(new int[] {3, d3},1);
+        testInit.putScalar(new int[] {4, d4},1);
+
 
         // run one step -> IMPORTANT: rnnTimeStep() must be called, not
         // output()
@@ -104,7 +113,7 @@ public class CurExExamples {
         // first difference, for rnns we need to use GravesLSTM.Builder
         for (int i = 0; i < HIDDEN_LAYER_CONT; i++) {
             GravesLSTM.Builder hiddenLayerBuilder = new GravesLSTM.Builder();
-            hiddenLayerBuilder.nIn(i == 0 ? 1 : HIDDEN_LAYER_WIDTH);
+            hiddenLayerBuilder.nIn(i == 0 ? 50 : HIDDEN_LAYER_WIDTH);
             hiddenLayerBuilder.nOut(HIDDEN_LAYER_WIDTH);
             // adopted activation function from GravesLSTMCharModellingExample
             // seems to work well with RNNs
@@ -118,7 +127,7 @@ public class CurExExamples {
         // this is required for our sampleFromDistribution-function
         outputLayerBuilder.activation("softmax");
         outputLayerBuilder.nIn(HIDDEN_LAYER_WIDTH);
-        outputLayerBuilder.nOut(1);
+        outputLayerBuilder.nOut(50);
         listBuilder.layer(HIDDEN_LAYER_CONT, outputLayerBuilder.build());
 
         // finish builder
@@ -140,37 +149,55 @@ public class CurExExamples {
         rrTest.initialize(new FileSplit(new File("dl4j-examples/src/main/resources/curExc/test.csv")));
 
         while(rr.hasNext()){
-            trainList.add(Double.parseDouble(rr.next().get(2).toString()));
-//            trainList.add((int) (Double.parseDouble(rr.next().get(2).toString())*10000));
+            trainList.add((int) (Double.parseDouble(rr.next().get(2).toString())*10000));
         }
 
         while(rrTest.hasNext()){
-            testList.add(Double.parseDouble(rrTest.next().get(2).toString()));
-//            trainList.add((int) (Double.parseDouble(rr.next().get(2).toString())*10000));
+            testList.add((int) (Double.parseDouble(rrTest.next().get(2).toString())*10000));
         }
-        input = Nd4j.zeros(1,1, trainList.size());
-        labels = Nd4j.zeros(1,1, trainList.size());
+        input = Nd4j.zeros(5,10, trainList.size());
+        labels = Nd4j.zeros(5,10, trainList.size());
 
         for (int i=0;i<trainList.size();i++) {
-            if (i==0){
-                input.putScalar(new int[]{0,0,i},trainList.get(i));
-            }else{
-                input.putScalar(new int[]{0,0,i},trainList.get(i));
-                labels.putScalar(new int[]{0,0,i-1},trainList.get(i));
+            int num = trainList.get(i);
+            int d0 = num / 10000;
+            int d1 = (num - d0 * 10000) / 1000;
+            int d2 = (num - d0 * 10000 - d1 * 1000) / 100;
+            int d3 = (num - d0 * 10000 - d1 * 1000 - d2 * 100) / 10;
+            int d4 = (num - d0 * 10000 - d1 * 1000 - d2 * 100 - d3 * 10);
+            input.putScalar(new int[]{0, d0, i}, 1);
+            input.putScalar(new int[]{1, d1, i}, 1);
+            input.putScalar(new int[]{2, d2, i}, 1);
+            input.putScalar(new int[]{3, d3, i}, 1);
+            input.putScalar(new int[]{4, d4, i}, 1);
+            if (i!=0) {
+                labels.putScalar(new int[]{0, d0, i-1}, 1);
+                labels.putScalar(new int[]{1, d1, i-1}, 1);
+                labels.putScalar(new int[]{2, d2, i-1}, 1);
+                labels.putScalar(new int[]{3, d3, i-1}, 1);
+                labels.putScalar(new int[]{4, d4, i-1}, 1);
             }
+
         }
-        labels.putScalar(new int[]{0,0,trainList.size()-1},testList.get(0));
+
+        int num = testList.get(0);
+        int lastIndex = testList.size()-1;
+        int d0 = num / 10000;
+        int d1 = (num - d0 * 10000) / 1000;
+        int d2 = (num - d0 * 10000 - d1 * 1000) / 100;
+        int d3 = (num - d0 * 10000 - d1 * 1000 - d2 * 100) / 10;
+        int d4 = (num - d0 * 10000 - d1 * 1000 - d2 * 100 - d3 * 10);
+        labels.putScalar(new int[]{0, d0, lastIndex-1}, 1);
+        labels.putScalar(new int[]{1, d1, lastIndex-1}, 1);
+        labels.putScalar(new int[]{2, d2, lastIndex-1}, 1);
+        labels.putScalar(new int[]{3, d3, lastIndex-1}, 1);
+        labels.putScalar(new int[]{4, d4, lastIndex-1}, 1);
+
         System.out.println("loadData Done");
 
         DataSet trainingData = new DataSet(input, labels);
         return trainingData;
-//        for (int i : trainList) {
-//            int d0 = i/10000;
-//            int d1 = (i-d0*10000)/1000;
-//            int d2 = (i-d0*10000-d1*1000)/100;
-//            int d3 = (i-d0*10000-d1*1000-d2*100)/10;
-//            int d4 = (i-d0*10000-d1*1000-d2*100-d3*10);
-//        }
+
 
 
     }
