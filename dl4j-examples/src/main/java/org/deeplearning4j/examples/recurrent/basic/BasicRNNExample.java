@@ -131,6 +131,9 @@ public class BasicRNNExample {
 			// the output shows what the net thinks what should come next
 			INDArray output = net.rnnTimeStep(testInit);
 
+            if (epoch==99){
+                System.out.println("Epoch " + epoch);
+            }
 			// now the net sould guess LEARNSTRING.length mor characters
 			for (int j = 0; j < LEARNSTRING.length; j++) {
 

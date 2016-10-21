@@ -4,6 +4,7 @@ import org.datavec.api.records.reader.RecordReader;
 import org.datavec.api.records.reader.impl.csv.CSVRecordReader;
 import org.datavec.api.split.FileSplit;
 import org.deeplearning4j.nn.api.OptimizationAlgorithm;
+import org.deeplearning4j.nn.conf.BackpropType;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.Updater;
@@ -27,7 +28,7 @@ import java.util.List;
  * This example trains a RNN. We take the history data of current exchange rate from CNY to One U.S. dollar as input,
  * , it will predict the rate of next time.
  */
-public class CurExHotVecExamples {
+public class CurExHotVecExamplesBasic {
 
     private static int HIDDEN_LAYER_WIDTH=10;
     private static int HIDDEN_LAYER_CONT=3;
@@ -50,7 +51,7 @@ public class CurExHotVecExamples {
         net.rnnClearPreviousState();
 
         // put the first caracter into the rrn as an initialisation
-        INDArray testInit = Nd4j.zeros(5,10);
+        INDArray testInit = Nd4j.zeros(1,10);
         int num = testList.get(0);
         int lastIndex = testList.size()-1;
         int d0 = num / 10000;
@@ -59,10 +60,10 @@ public class CurExHotVecExamples {
         int d3 = (num - d0 * 10000 - d1 * 1000 - d2 * 100) / 10;
         int d4 = (num - d0 * 10000 - d1 * 1000 - d2 * 100 - d3 * 10);
         testInit.putScalar(new int[] {0, d0},1);
-        testInit.putScalar(new int[] {1, d1},1);
-        testInit.putScalar(new int[] {2, d2},1);
-        testInit.putScalar(new int[] {3, d3},1);
-        testInit.putScalar(new int[] {4, d4},1);
+//        testInit.putScalar(new int[] {1, d1},1);
+//        testInit.putScalar(new int[] {2, d2},1);
+//        testInit.putScalar(new int[] {3, d3},1);
+//        testInit.putScalar(new int[] {4, d4},1);
 
 
         // run one step -> IMPORTANT: rnnTimeStep() must be called, not
@@ -99,7 +100,7 @@ public class CurExHotVecExamples {
     private static NeuralNetConfiguration.ListBuilder bconfigureNN() {
         // some common parameters
         NeuralNetConfiguration.Builder builder = new NeuralNetConfiguration.Builder();
-        builder.iterations(10);
+        builder.iterations(100);
         builder.learningRate(0.001);
         builder.optimizationAlgo(OptimizationAlgorithm.STOCHASTIC_GRADIENT_DESCENT);
         builder.seed(123);
@@ -133,6 +134,9 @@ public class CurExHotVecExamples {
         // finish builder
         listBuilder.pretrain(false);
         listBuilder.backprop(true);
+        listBuilder.backpropType(BackpropType.TruncatedBPTT);
+        listBuilder.tBPTTBackwardLength(20);
+        listBuilder.tBPTTForwardLength(20);
 
         return listBuilder;
     }
@@ -155,8 +159,8 @@ public class CurExHotVecExamples {
         while(rrTest.hasNext()){
             testList.add((int) (Double.parseDouble(rrTest.next().get(2).toString())*10000));
         }
-        input = Nd4j.zeros(5,10, trainList.size());
-        labels = Nd4j.zeros(5,10, trainList.size());
+        input = Nd4j.zeros(1,10, trainList.size());
+        labels = Nd4j.zeros(1,10, trainList.size());
 
         for (int i=0;i<trainList.size();i++) {
             int num = trainList.get(i);
@@ -166,16 +170,16 @@ public class CurExHotVecExamples {
             int d3 = (num - d0 * 10000 - d1 * 1000 - d2 * 100) / 10;
             int d4 = (num - d0 * 10000 - d1 * 1000 - d2 * 100 - d3 * 10);
             input.putScalar(new int[]{0, d0, i}, 1);
-            input.putScalar(new int[]{1, d1, i}, 1);
-            input.putScalar(new int[]{2, d2, i}, 1);
-            input.putScalar(new int[]{3, d3, i}, 1);
-            input.putScalar(new int[]{4, d4, i}, 1);
+//            input.putScalar(new int[]{1, d1, i}, 1);
+//            input.putScalar(new int[]{2, d2, i}, 1);
+//            input.putScalar(new int[]{3, d3, i}, 1);
+//            input.putScalar(new int[]{4, d4, i}, 1);
             if (i!=0) {
                 labels.putScalar(new int[]{0, d0, i-1}, 1);
-                labels.putScalar(new int[]{1, d1, i-1}, 1);
-                labels.putScalar(new int[]{2, d2, i-1}, 1);
-                labels.putScalar(new int[]{3, d3, i-1}, 1);
-                labels.putScalar(new int[]{4, d4, i-1}, 1);
+//                labels.putScalar(new int[]{1, d1, i-1}, 1);
+//                labels.putScalar(new int[]{2, d2, i-1}, 1);
+//                labels.putScalar(new int[]{3, d3, i-1}, 1);
+//                labels.putScalar(new int[]{4, d4, i-1}, 1);
             }
 
         }
@@ -188,10 +192,10 @@ public class CurExHotVecExamples {
         int d3 = (num - d0 * 10000 - d1 * 1000 - d2 * 100) / 10;
         int d4 = (num - d0 * 10000 - d1 * 1000 - d2 * 100 - d3 * 10);
         labels.putScalar(new int[]{0, d0, lastIndex-1}, 1);
-        labels.putScalar(new int[]{1, d1, lastIndex-1}, 1);
-        labels.putScalar(new int[]{2, d2, lastIndex-1}, 1);
-        labels.putScalar(new int[]{3, d3, lastIndex-1}, 1);
-        labels.putScalar(new int[]{4, d4, lastIndex-1}, 1);
+//        labels.putScalar(new int[]{1, d1, lastIndex-1}, 1);
+//        labels.putScalar(new int[]{2, d2, lastIndex-1}, 1);
+//        labels.putScalar(new int[]{3, d3, lastIndex-1}, 1);
+//        labels.putScalar(new int[]{4, d4, lastIndex-1}, 1);
 
         System.out.println("loadData Done");
 
