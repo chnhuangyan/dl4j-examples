@@ -40,7 +40,9 @@ public class CurExExamples {
 
     private static final int lstmLayer1Size = 25;
     private static final int lstmLayer2Size = 50;
-    private static final int lstmLayer3Size = 25;
+    private static final int lstmLayer3Size = 50;
+    private static final int lstmLayer4Size = 25;
+
 
     private static List<Double> testList = new ArrayList<Double>();
 
@@ -77,8 +79,10 @@ public class CurExExamples {
                 .activation("tanh").build())
             .layer(2, new GravesLSTM.Builder().nIn(lstmLayer2Size).nOut(lstmLayer3Size)
                 .activation("tanh").build())
-            .layer(3, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE).activation("identity")
-                .nIn(lstmLayer3Size).nOut(nOut).build())
+            .layer(3, new GravesLSTM.Builder().nIn(lstmLayer3Size).nOut(lstmLayer4Size)
+                .activation("tanh").build())
+            .layer(4, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE).activation("identity")
+                .nIn(lstmLayer4Size).nOut(nOut).build())
             .pretrain(false).backprop(true)
             .backpropType(BackpropType.TruncatedBPTT).tBPTTBackwardLength(20).tBPTTForwardLength(20)
             .build();
